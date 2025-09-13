@@ -1,0 +1,162 @@
+// This is your Prisma schema file
+// Learn more: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Email verification OTPs
+model EmailVerificationOTP {
+  id        String   @id @default(cuid())
+  email     String
+  otpHash   String   // Store hashed OTP for security
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  attempts  Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@map("email_verification_otps")
+}
+
+// User model - Core entity for both clients and freelancers
+model User {
+  id            String   @id @default(uuid())
+  email         String   @unique
+  passwordHash  String
+  firstName     String
+  lastName      String
+  userType      UserType @default(FREELANCER)
+  isVerified    Boolean  @default(false)
+  isActive      Boolean  @default(true)
+  resetToken    PasswordResetToken[]
+  resetTokenExp DateTime?
+  
+  // Profile fields
+  bio           String?
+  skills        String[] // Array of skills for MVP
+  hourlyRate    Float?
+  location      String?
+  website       String?
+  phone         String?
+  
+  // Relations
+  postedJobs    Job[]         @relation("ClientJobs")
+  applications  Application[]
+  sentMessages  Message[]     @relation("SentMessages")
+  receivedMessages Message[]  @relation("ReceivedMessages")
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("users")
+}
+
+// Model for password reset tokens
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@map("password_reset_tokens")
+}
+
+enum UserType {
+  ADMIN
+  CLIENT
+  FREELANCER
+}
+
+// Job model - Posted by clients
+model Job {
+  id          String     @id @default(uuid())
+  title       String
+  description String
+  category    String
+  budget      Float?
+  budgetType  BudgetType @default(FIXED)
+  deadline    DateTime?
+  status      JobStatus  @default(OPEN)
+  
+  // Client relationship
+  clientId    String
+  client      User       @relation("ClientJobs", fields: [clientId], references: [id])
+  
+  // Applications from freelancers
+  applications Application[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("jobs")
+}
+
+enum BudgetType {
+  FIXED
+  HOURLY
+}
+
+enum JobStatus {
+  OPEN
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+// Application model - Freelancers apply to jobs
+model Application {
+  id          String            @id @default(uuid())
+  proposal    String            // Freelancer's proposal text
+  proposedRate Float?           // Rate proposed by freelancer
+  
+  // Job relationship
+  jobId       String
+  job         Job               @relation(fields: [jobId], references: [id])
+  
+  // Freelancer relationship  
+  freelancerId String
+  freelancer   User             @relation(fields: [freelancerId], references: [id])
+  
+  status      ApplicationStatus @default(PENDING)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Prevent duplicate applications
+  @@unique([jobId, freelancerId])
+  @@map("applications")
+}
+
+enum ApplicationStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
+// Message model - Communication between users
+model Message {
+  id         String   @id @default(uuid())
+  content    String
+  
+  // Sender relationship
+  senderId   String
+  sender     User     @relation("SentMessages", fields: [senderId], references: [id])
+  
+  // Receiver relationship
+  receiverId String
+  receiver   User     @relation("ReceivedMessages", fields: [receiverId], references: [id])
+  
+  isRead     Boolean  @default(false)
+  
+  createdAt  DateTime @default(now())
+
+  @@map("messages")
+}
