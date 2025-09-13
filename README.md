@@ -1,7 +1,7 @@
 
-  # Freelancers Job Portal Homepage
+  # FreelancersHIVE
 
-  This is a code bundle for Freelancers Job Portal Homepage. The original project is available at https://www.figma.com/design/AMYETzgdc295OUdVUujrb2/Freelancers-Job-Portal-Homepage.
+  Freelance Job Portal
 
   ## Running the code
 
